@@ -9,7 +9,11 @@
 #include <algorithm>
 
 void clearScreen() {
-    system("CLS"); // Clear screen
+    #ifdef _WIN32 // Includes both 32 bit and 64 bit
+        system("CLS"); // Clear screen
+	#else
+	    system("clear"); // Clear screen
+	#endif
     std::cout << std::flush; // Flushes the iostream
 }
 
@@ -44,8 +48,12 @@ void menuExecution(int optionNumber) {
         getline(std::cin, input);
         output = "curl http://github-calendar.herokuapp.com/commits/" + input;  // Sends a curl command to the command line
         remove(output.c_str());                                                 // that grabs the GitHub calendar data in a JSON format
-        std::shared_ptr<FILE> pipe(_popen(output.c_str(), "r"), _pclose);       // and returns it as a string to 'result'
-        if (!pipe) {                                                            // Don't worry about this code, it works and even I don't get it
+        #ifdef _WIN32 // Includes both 32 bit and 64 bit                        // and returns it as a string to 'result'
+            std::shared_ptr<FILE> pipe(_popen(output.c_str(), "r"), _pclose);   // Don't worry about this code, it works and even I don't get it
+	    #else
+	        std::shared_ptr<FILE> pipe(popen(output.c_str(), "r"), pclose);
+	    #endif
+        if (!pipe) {                                                           
             throw std::runtime_error("popen() failed!");
         }
         while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
@@ -133,6 +141,7 @@ void menuExecution(int optionNumber) {
             }
         }
 
+        myfile.close(); // Closes file
 
         std::string ipAdd = "192.168.0.1";  // IP address that the system POSTS the JSON file to.
         //std::string ipAdd = "http://192.168.4.1/led";
@@ -143,8 +152,6 @@ void menuExecution(int optionNumber) {
         if (result.length() > 0) {
             std::cout << "Success!\n" << std::endl; // The GitHub calendar was successfully fetched and sent to the microcontroller
         }
-
-        myfile.close(); // Closes file
 
         return; // Returns to main menu
     }
