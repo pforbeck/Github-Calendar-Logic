@@ -71,7 +71,7 @@ std::vector<int> gitData() {
         resultsVector.push_back(std::stoi(each));
     }
 
-    std::reverse(resultsVector.begin(), resultsVector.end()); // Reverses the vector so it goes from most to least recent
+    //std::reverse(resultsVector.begin(), resultsVector.end()); // Reverses the vector so it goes from most to least recent
     return resultsVector;
 }
 
