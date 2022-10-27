@@ -8,7 +8,8 @@
 #include <fstream>
 #include <algorithm>
 #include <sstream>
-
+#include "cordConstruct.h"
+#include "jsonConstruct.h"
 
 void clearScreen() {
 #ifdef _WIN32 // Includes both 32 bit and 64 bit
@@ -40,128 +41,155 @@ int displayMenu() {
     return menuNumber;
 }
 
-void menuExecution(int optionNumber) {
-    std::string input, output, result, notDone = "This has yet to be implemented... Returning to menu!\n";
+std::vector<int> gitData() {
+    std::string input, output, result;
     std::array<char, 128> buffer;
-
-    if (optionNumber == 1) {
-        // Why is this not in the switch case? Because the initialization of "pipe" was throwing an error I didn't know how to resolve and this was a good side-step.
-        std::cout << "Enter GitHub username: ";
-        getline(std::cin, input);
-        output = "curl http://github-calendar.herokuapp.com/commits/" + input;  // Sends a curl command to the command line
-        remove(output.c_str());                                                 // that grabs the GitHub calendar data in a JSON format
+    // Why is this not in the switch case? Because the initialization of "pipe" was throwing an error I didn't know how to resolve and this was a good side-step.
+    std::cout << "Enter GitHub username: ";
+    getline(std::cin, input);
+    output = "curl http://github-calendar.herokuapp.com/commits/" + input;  // Sends a curl command to the command line
+    remove(output.c_str());                                                 // that grabs the GitHub calendar data in a JSON format
 #ifdef _WIN32 // Includes both 32 bit and 64 bit                        // and returns it as a string to 'result'
-        std::shared_ptr<FILE> pipe(_popen(output.c_str(), "r"), _pclose);   // Don't worry about this code, it works and even I don't get it
+    std::shared_ptr<FILE> pipe(_popen(output.c_str(), "r"), _pclose);   // Don't worry about this code, it works and even I don't get it
 #else
-        std::shared_ptr<FILE> pipe(popen(output.c_str(), "r"), pclose);
+    std::shared_ptr<FILE> pipe(popen(output.c_str(), "r"), pclose);
 #endif
-        if (!pipe) {
-            throw std::runtime_error("popen() failed!");
-        }
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += buffer.data();
-        }
-        clearScreen();
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    clearScreen();
 
-        // Send processed JSON data to "http://192.168.4.1/led" as a curl POST request
-        int firstLoc = result.find_first_of("[") + 1; // Trims the front of the data string
-        int lastLoc = result.find_first_of("]"); // Trims the back of the data string
-        std::vector<int> resultsVector; // Puts the string data into a vector
-        std::istringstream split(result.substr(firstLoc, lastLoc - firstLoc));
-        for (std::string each; std::getline(split, each, ',');) {
-			resultsVector.push_back(std::stoi(each));
-        }
-		
-        std::reverse(resultsVector.begin(), resultsVector.end()); // Reverses the vector so it goes from most to least recent
-
-        std::ofstream myfile("LEDData.json"); // Accesses/creates a JSON file that I can output to
-
-        if (!myfile.is_open()) { // Checks the file is open
-            std::cout << "Error! Exiting program...";
-            exit(1);
-        }
-        int count = (resultsVector.size() - 1) - (std::count(resultsVector.begin(), resultsVector.end(), 0));
-        myfile << "{\n\"count\":" << std::to_string(count) << ",\n\"clear\" : false,\n\"cords\" : [\n"; // Start of the JSON file
-
-        std::string coordinateData; // String to store the JSON data. We create the JSON file line by line
-		int k = 0; // k is the index of the vector
-        int roy, gee, biv; // The values for R, G, and B in the JSON file
-        for (int i = 0; i < 32; i++) { // This is for X (NOTE: I am not sure these values are right, please double check)
-            for (int r = 0; r < 7; r++) { // This is for Y
-                    coordinateData = "[" + std::to_string(i); // Adds the X coord to the string to go into the JSON file
-                    coordinateData.append(", " + std::to_string(r)); // Adds the Y coord to the string to go into the JSON file
-                    switch (resultsVector.at(k)) {
-                    case 0: // Why are these chars? I dunno... seriously. I'm losing it.
-                        roy = 0;
-                        gee = 0;
-                        biv = 0;
-                        break;
-                    case 1:
-                        roy = 56;
-                        gee = 221;
-                        biv = 52;
-                        break;
-                    case 2:
-                        roy = 69;
-                        gee = 160;
-                        biv = 69;
-                        break;
-                    case 3:
-                        roy = 4;
-                        gee = 117;
-                        biv = 38;
-                        break;
-                    case 4:
-                        roy = 10;
-                        gee = 66;
-                        biv = 8;
-                        break;
-                    default:
-                        // The switch statement won't catch any additional contributions above 4
-                        // so I set the default case as the RGB values of 4 since that's the max anyways
-                        roy = 10;
-                        gee = 66;
-                        biv = 8;
-                        break;
-                    }
-                    // Why so many appends? Because it seems to break after one + ... so tired.
-                    coordinateData.append(", " + std::to_string(roy)); // R
-                    coordinateData.append(", " + std::to_string(gee)); // G
-                    coordinateData.append(", " + std::to_string(biv)); // B
-                    coordinateData.append("],"); // Closing bracket
-                    k++; // Increments the LED counter.
-                    if (k == 224) { // Last loop. Sends in the closing data for the JSON file.
-                        coordinateData.erase(coordinateData.find_last_of(","));
-                        myfile << coordinateData << std::endl;
-                        coordinateData = "]";
-                        myfile << coordinateData << std::endl;
-                        coordinateData = "}";
-                    }
-                    if (!(resultsVector.at(k - 1) == 0)) {
-                        myfile << coordinateData << std::endl;
-                    }
-                    coordinateData = ""; // Resets the coordinateData string so it can accept more data.
-            }
-        }
-
-        myfile.close(); // Closes file
-
-        //std::string ipAdd = "192.168.0.1";  // IP address that the system POSTS the JSON file to.
-        std::string ipAdd = "http://192.168.4.1/led";
-        std::string JSONoutput = "curl --json @LEDData.json " + ipAdd;
-        system(JSONoutput.c_str());
-
-        clearScreen();
-        if (result.length() > 0) {
-            std::cout << "Success!\n" << std::endl; // The GitHub calendar was successfully fetched and sent to the microcontroller
-        }
-
-        return; // Returns to main menu
+    // Send processed JSON data to "http://192.168.4.1/led" as a curl POST request
+    int firstLoc = result.find_first_of("[") + 1; // Trims the front of the data string
+    int lastLoc = result.find_first_of("]"); // Trims the back of the data string
+    std::vector<int> resultsVector; // Puts the string data into a vector
+    std::istringstream split(result.substr(firstLoc, lastLoc - firstLoc));
+    for (std::string each; std::getline(split, each, ',');) {
+        resultsVector.push_back(std::stoi(each));
     }
 
+    std::reverse(resultsVector.begin(), resultsVector.end()); // Reverses the vector so it goes from most to least recent
+    return resultsVector;
+}
+
+std::ofstream openFileStream() {
+    std::ofstream myfile("LEDData.json"); // Accesses/creates a JSON file that I can output to
+
+    if (!myfile.is_open()) { // Checks the file is open
+        std::cout << "Error! Exiting program...";
+        exit(1);
+    }
+    return myfile;
+}
+void sendJson() {
+    //std::string ipAdd = "192.168.0.1";  // IP address that the system POSTS the JSON file to.
+    std::string ipAdd = "http://192.168.4.1/led";
+    std::string JSONoutput = "curl --json @LEDData.json " + ipAdd;
+    system(JSONoutput.c_str());
+    return;
+}
+
+void clearLed() {
+    std::ofstream myfile = openFileStream();
+    std::vector<std::string> blank;
+    jsonConstruct json = jsonConstruct(blank);
+    myfile << json.clear();
+    myfile.close();
+    sendJson();
+    clearScreen();
+    return;
+
+}
+
+void gitCalendar() {
+    clearLed();
+    std::vector<int> resultsVector = gitData();
+    std::ofstream myfile = openFileStream();
+
+    int k = 0; // k is the index of the vector
+    std::vector<std::string> cordsbuffer;
+    int roy{}, gee{}, biv{}; // The values for R, G, and B in the JSON file
+    for (int x = 0; x < 32; x++) { // This is for X (NOTE: I am not sure these values are right, please double check)
+        for (int y = 0; y < 7; y++) { // This is for Y
+            if (!(resultsVector.at(k) == 0)) {
+
+                if (1 <= resultsVector.at(k) && resultsVector.at(k) <= 5) {
+                    roy = 56;
+                    gee = 221;
+                    biv = 52;
+                }
+                if (6 <= resultsVector.at(k) && resultsVector.at(k) <= 10) {
+                    roy = 69;
+                    gee = 160;
+                    biv = 69;
+                }
+                if (11 <= resultsVector.at(k) && resultsVector.at(k) <= 15) {
+                    roy = 4;
+                    gee = 117;
+                    biv = 38;
+                }
+                if (16 <= resultsVector.at(k)) {
+                    roy = 10;
+                    gee = 66;
+                    biv = 8;
+                }
+                cordConstruct cords = cordConstruct(x, y, roy, gee, biv);
+                cordsbuffer.push_back(cords.data());
+            }
+            k++;
+        }
+    }
+    jsonConstruct json = jsonConstruct(cordsbuffer);
+    myfile << json.data();
+
+    myfile.close(); // Closes file
+
+    sendJson();
+
+    clearScreen();
+    if (resultsVector.size() > 0) {
+        std::cout << "Success!\n" << std::endl; // The GitHub calendar was successfully fetched and sent to the microcontroller
+    }
+
+    return; // Returns to main menu
+}
+
+void rainbow() {
+    clearLed();
+    std::ofstream myfile = openFileStream();
+    int k = 0; // k is the index of the vector
+    std::vector<std::string> cordsbuffer;
+    int roy{}, gee{}, biv{}; // The values for R, G, and B in the JSON file
+    for (int x = 0; x < 32; x++) { // This is for X (NOTE: I am not sure these values are right, please double check)
+        for (int y = 0; y < 8; y++) { // This is for Y
+            roy = std::rand() % 256;
+            gee = std::rand() % 256;
+            biv = std::rand() % 256;
+
+            cordConstruct cords = cordConstruct(x, y, roy, gee, biv);
+            cordsbuffer.push_back(cords.data());
+        }
+    }
+    jsonConstruct json = jsonConstruct(cordsbuffer);
+    myfile << json.data();
+    myfile.close(); // Closes file
+    sendJson();
+    clearScreen();
+}
+
+
+void menuExecution(int optionNumber) {
+    std::string notDone = "This has yet to be implemented... Returning to menu!\n";
+
     switch (optionNumber) {
+    case 1:
+        gitCalendar();
+        break;
     case 2: // Rainbow Mode
-        std::cout << notDone << std::endl;
+        rainbow();
         break;
     case 3: // Clock
         std::cout << notDone << std::endl;
@@ -170,7 +198,7 @@ void menuExecution(int optionNumber) {
         std::cout << notDone << std::endl;
         break;
     case 5: // Clear
-        std::cout << notDone << std::endl;
+        clearLed();
 		break;
     case 0: // Exit
         std::cout << "See you next time! Exiting program..." << std::endl;
