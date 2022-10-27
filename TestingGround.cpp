@@ -23,7 +23,7 @@ void clearScreen() {
 int displayMenu() {
     std::string menuString; // Stores the input.
     int menuNumber; // Stores the scrubbed input.
-    std::cout << "Do you want to....\n\t1. Display your Github Activity Calendar\n\t2. Activate Rainbow Mode\n\t3. View the time\n\t4. Set a timer\n\t5. Clear\n\t0. Exit\n\nYour Choice: "; // Outputs the main menu
+    std::cout << "Do you want to....\n\t1. Display your Github Activity Calendar\n\t2. Activate Rainbow Mode\n\t3. View the time\n\t4. 255 second timer\n\t5. Clear\n\t0. Exit\n\nYour Choice: "; // Outputs the main menu
     getline(std::cin, menuString);
 
     try {
