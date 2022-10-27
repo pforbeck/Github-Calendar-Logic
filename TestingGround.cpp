@@ -180,6 +180,27 @@ void rainbow() {
     clearScreen();
 }
 
+void timer() {
+    clearLed();
+    std::ofstream myfile = openFileStream();
+    int k = 0; // k is the index of the vector
+    std::vector<std::string> cordsbuffer;
+    int roy{}, gee{}, biv{}; // The values for R, G, and B in the JSON file
+    for (int x = 0; x < 32; x++) { // This is for X (NOTE: I am not sure these values are right, please double check)
+        for (int y = 0; y < 8; y++) { // This is for Y
+            roy = 128;
+            gee = 0;
+            biv = 0;
+            cordConstruct cords = cordConstruct(x, y, roy, gee, biv);
+            cordsbuffer.push_back(cords.data());
+        }
+    }
+    jsonConstruct json = jsonConstruct(cordsbuffer);
+    myfile << json.timer();
+    myfile.close(); // Closes file
+    sendJson();
+    clearScreen();
+}
 
 void menuExecution(int optionNumber) {
     std::string notDone = "This has yet to be implemented... Returning to menu!\n";
@@ -195,7 +216,7 @@ void menuExecution(int optionNumber) {
         std::cout << notDone << std::endl;
         break;
     case 4: // Timer
-        std::cout << notDone << std::endl;
+        timer();
         break;
     case 5: // Clear
         clearLed();

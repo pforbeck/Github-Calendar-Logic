@@ -8,6 +8,7 @@ public:
 	jsonConstruct(std::vector<std::string>& vec);
 	std::string data();
 	std::string clear();
+	std::string timer();
 private:
 	std::vector<std::string> vec;
 };
